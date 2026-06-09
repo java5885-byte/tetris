@@ -99,31 +99,38 @@
     height: 100%;
     width: auto;
     aspect-ratio: 1 / 2;
-    max-width: calc(100vw - 110px);
+    max-width: calc(100vw - 116px);
   }
 
   /* ---- LEFT: level progress gauge ---- */
   .gauge {
     height: 100%;
-    width: 16px;
-    background: var(--panel);
+    width: 40px;
+    background: #14162c;
     border: 1px solid var(--grid);
-    border-radius: 8px;
+    border-radius: 22px;
     overflow: hidden;
     display: flex;
     align-items: flex-end;
     flex: 0 0 auto;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,.55);
   }
   .gauge-fill {
     width: 100%;
     height: 0%;
-    background: linear-gradient(to top, #5563e0, #a7b1ff);
+    /* convex golden cylinder: light sheen down the center */
+    background: linear-gradient(to right,
+      #8a5e0c 0%, #c8951a 22%, #ffe27a 46%, #fff6cf 52%,
+      #ffd24d 60%, #c8951a 80%, #7e540a 100%);
+    border-radius: 22px;
+    box-shadow: inset 0 3px 5px rgba(255,255,255,.55),
+                inset 0 -5px 8px rgba(0,0,0,.35);
     transition: height .3s ease;
   }
   .gauge.flash { animation: gaugeFlash .35s ease 3; }
   @keyframes gaugeFlash {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(167,177,255,0); }
-    50% { box-shadow: 0 0 18px 5px rgba(167,177,255,.9); }
+    0%, 100% { box-shadow: inset 0 2px 6px rgba(0,0,0,.55), 0 0 0 0 rgba(255,210,77,0); }
+    50% { box-shadow: inset 0 2px 6px rgba(0,0,0,.55), 0 0 22px 7px rgba(255,210,77,.95); }
   }
 
   /* ---- RIGHT: golden stars ---- */
