@@ -83,6 +83,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     position: relative;
     min-height: 0;
     padding: 6px;
@@ -98,7 +99,54 @@
     height: 100%;
     width: auto;
     aspect-ratio: 1 / 2;
-    max-width: 96vw;
+    max-width: calc(100vw - 96px);
+  }
+
+  /* ---- LEFT: level progress gauge ---- */
+  .gauge {
+    height: 100%;
+    width: 16px;
+    background: var(--panel);
+    border: 1px solid var(--grid);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    flex: 0 0 auto;
+  }
+  .gauge-fill {
+    width: 100%;
+    height: 0%;
+    background: linear-gradient(to top, #5563e0, #a7b1ff);
+    transition: height .3s ease;
+  }
+  .gauge.flash { animation: gaugeFlash .35s ease 3; }
+  @keyframes gaugeFlash {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(167,177,255,0); }
+    50% { box-shadow: 0 0 18px 5px rgba(167,177,255,.9); }
+  }
+
+  /* ---- RIGHT: golden stars ---- */
+  .stars {
+    height: 100%;
+    width: 30px;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+    flex: 0 0 auto;
+  }
+  .stars .star {
+    font-size: 22px;
+    line-height: 1;
+    color: #2a2d52;
+    transition: color .25s, transform .25s, text-shadow .25s;
+  }
+  .stars .star.on {
+    color: #ffd54f;
+    text-shadow: 0 0 8px rgba(255,213,79,.85);
+    transform: scale(1.18);
   }
 
   /* ---- BOTTOM: control pad ---- */
@@ -169,8 +217,9 @@
       </div>
     </div>
 
-    <!-- MIDDLE: board -->
+    <!-- MIDDLE: gauge + board + stars -->
     <div class="stage">
+      <div class="gauge" id="gauge"><div class="gauge-fill" id="gaugeFill"></div></div>
       <div class="board-wrap">
         <canvas id="board"></canvas>
         <div class="overlay" id="overlay">
@@ -179,6 +228,7 @@
           <button class="btn" id="startBtn">게임 시작</button>
         </div>
       </div>
+      <div class="stars" id="stars"></div>
     </div>
 
     <!-- BOTTOM: control pad -->
@@ -198,6 +248,40 @@
   const ctx = board.getContext('2d');
   const nextCanvas = document.getElementById('next');
   const nctx = nextCanvas.getContext('2d');
+
+  // ---- level progress gauge + golden stars ----
+  const LINES_PER_LEVEL = 10;
+  const gaugeEl = document.getElementById('gauge');
+  const gaugeFillEl = document.getElementById('gaugeFill');
+  const starsEl = document.getElementById('stars');
+  const starEls = [];
+  for(let i=0;i<10;i++){
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.textContent = '★';
+    starsEl.appendChild(s);
+    starEls.push(s);
+  }
+  let levelUpAnim = false;
+  function updateProgress(){
+    if(levelUpAnim) return;              // hold "full" display during level-up flash
+    const inLevel = (typeof lines === 'number' ? lines : 0) % LINES_PER_LEVEL;
+    gaugeFillEl.style.height = (inLevel / LINES_PER_LEVEL * 100) + '%';
+    for(let i=0;i<10;i++) starEls[i].classList.toggle('on', i < inLevel);
+  }
+  function levelUpEffect(){
+    // fill gauge + light all stars, flash, sound, then reset to new level
+    levelUpAnim = true;
+    gaugeFillEl.style.height = '100%';
+    starEls.forEach(s=> s.classList.add('on'));
+    gaugeEl.classList.add('flash');
+    SFX.levelup();
+    setTimeout(()=>{
+      gaugeEl.classList.remove('flash');
+      levelUpAnim = false;
+      updateProgress();
+    }, 750);
+  }
 
   const COLORS = {
     I:'#9be7ff', O:'#ffe9a8', T:'#e0b3ff', S:'#b6e7b0',
@@ -259,7 +343,8 @@
     land:   ()=> tone(160, 0.08, 'triangle', 0.1),
     clear1: ()=> chord([523,659,784], 0.18, 'square', 0.13),
     clear4: ()=> chord([523,659,784,1047,1319], 0.22, 'square', 0.16),
-    over:   ()=> chord([392,330,262,196], 0.3, 'sawtooth', 0.14)
+    over:   ()=> chord([392,330,262,196], 0.3, 'sawtooth', 0.14),
+    levelup:()=> chord([523,659,784,1047,1319,1568], 0.22, 'triangle', 0.16)
   };
 
   function newGrid(){
@@ -409,6 +494,9 @@
       level = newLevel;
       dropInterval = baseInterval(level);
       levelTimer = 0;
+      levelUpEffect();   // gauge full + flash + sound, then resets
+    } else {
+      updateProgress();
     }
     updateStats();
   }
@@ -566,6 +654,8 @@
     nextPiece = makePiece(randomType());
     spawn();
     updateStats();
+    levelUpAnim = false;
+    updateProgress();
     document.getElementById('overlay').classList.add('hidden');
     document.getElementById('pauseBtn').textContent = '⏸';
     cancelAnimationFrame(rafId);
