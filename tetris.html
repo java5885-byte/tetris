@@ -107,7 +107,7 @@
     width: 100%;
     max-width: 640px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 10px;
     padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
   }
@@ -184,9 +184,8 @@
     <!-- BOTTOM: control pad -->
     <div class="controls" id="touch">
       <button data-act="left">◀</button>
-      <button data-act="rotate">⟳</button>
+      <button data-act="down">▼</button>
       <button data-act="right">▶</button>
-      <button data-act="drop">⤓</button>
     </div>
   </div>
 
@@ -601,26 +600,33 @@
     if(!act || !running || gameOver || paused) return;
     if(act==='left') move(-1);
     else if(act==='right') move(1);
-    else if(act==='rotate') tryRotate();
-    else if(act==='drop') hardDrop();
+    else if(act==='down') softDrop();
   });
 
-  // swipe support on board
+  // ---- rotate by tapping/clicking the board ----
+  let lastTouch = 0;
   let touchStart = null;
   board.addEventListener('touchstart', e=>{
     if(!running) return;
+    lastTouch = Date.now();
     touchStart = {x:e.touches[0].clientX, y:e.touches[0].clientY, t:Date.now()};
   }, {passive:true});
   board.addEventListener('touchend', e=>{
-    if(!touchStart || !running || gameOver || paused) return;
+    lastTouch = Date.now();
+    if(!touchStart || !running || gameOver || paused){ touchStart = null; return; }
     const dx = e.changedTouches[0].clientX - touchStart.x;
     const dy = e.changedTouches[0].clientY - touchStart.y;
     const adx = Math.abs(dx), ady = Math.abs(dy);
-    if(adx < 14 && ady < 14){ tryRotate(); }
-    else if(adx > ady){ move(dx>0?1:-1); }
-    else if(dy > 0){ if(ady>60) hardDrop(); else softDrop(); }
+    if(adx < 14 && ady < 14){ tryRotate(); }       // tap = rotate
+    else if(adx > ady){ move(dx>0?1:-1); }          // horizontal swipe = move
+    else if(dy > 0){ if(ady>60) hardDrop(); else softDrop(); } // swipe down = drop
     touchStart = null;
   }, {passive:true});
+  // desktop: click board to rotate (ignore the synthetic click after a touch)
+  board.addEventListener('click', ()=>{
+    if(Date.now() - lastTouch < 600) return;
+    if(running && !gameOver && !paused) tryRotate();
+  });
 
   document.getElementById('startBtn').addEventListener('click', startGame);
   document.getElementById('pauseBtn').addEventListener('click', togglePause);
