@@ -37,6 +37,7 @@
     border-radius: 10px;
     box-shadow: 0 10px 40px rgba(0,0,0,.5);
     touch-action: none;
+    cursor: none;
   }
   .side {
     display: flex;
@@ -91,7 +92,17 @@
   .overlay.hidden { display: none; }
   .touch-controls { display: none; }
   @media (max-width: 640px) {
-    .game { flex-direction: column-reverse; align-items: center; gap: 10px; }
+    body { align-items: center; justify-content: center; overflow-y: auto; }
+    .game {
+      flex-direction: column-reverse;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px;
+      margin: auto;
+    }
+    canvas#board { max-width: 88vw; height: auto; }
     .side { flex-direction: row; width: auto; flex-wrap: wrap; justify-content: center; }
     .card { padding: 8px 12px; }
     .hint { display: none; }
