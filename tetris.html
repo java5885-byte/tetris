@@ -195,6 +195,35 @@
   .overlay h1 { font-size: 30px; }
   .overlay p { color: #9498c4; max-width: 300px; line-height: 1.6; font-size: 14px; }
   .overlay.hidden { display: none; }
+
+  /* ---- level-up banner (gold, blinking) ---- */
+  .level-banner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 6;
+    opacity: 0;
+  }
+  .level-banner span {
+    font-size: 46px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    color: #ffd24d;
+    text-shadow: 0 0 20px rgba(255,210,77,.95), 0 0 40px rgba(255,170,0,.6), 0 2px 4px rgba(0,0,0,.6);
+  }
+  .level-banner.show { animation: lvlBlink 1.6s ease both; }
+  @keyframes lvlBlink {
+    0%   { opacity: 0; transform: scale(.6); }
+    12%  { opacity: 1; transform: scale(1.12); }
+    24%, 48%, 72% { opacity: 1; }
+    36%, 60%, 84% { opacity: .12; }
+    90%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.05); }
+  }
+
   .btn {
     background: var(--accent);
     color: #fff;
@@ -229,6 +258,7 @@
       <div class="gauge" id="gauge"><div class="gauge-fill" id="gaugeFill"></div></div>
       <div class="board-wrap">
         <canvas id="board"></canvas>
+        <div class="level-banner" id="levelBanner"><span>LEVEL 1</span></div>
         <div class="overlay" id="overlay">
           <h1>테트리스</h1>
           <p>블록을 쌓아 가로줄을 채우세요. 줄이 완성되면 사라집니다.</p>
@@ -268,9 +298,17 @@
     starsEl.appendChild(s);
     starEls.push(s);
   }
+  const levelBannerEl = document.getElementById('levelBanner');
   let levelBaseScore = 0;              // score at the start of the current level
-  function levelGoal(lv){ return 500 + (lv-1)*300; }  // points needed to clear level lv
+  // points needed to clear a level — doubles each level (500, 1000, 2000, 4000 ...)
+  function levelGoal(lv){ return 500 * Math.pow(2, lv-1); }
   let levelUpAnim = false;
+  function showLevelBanner(){
+    levelBannerEl.querySelector('span').textContent = 'LEVEL ' + level;
+    levelBannerEl.classList.remove('show');
+    void levelBannerEl.offsetWidth;    // reflow to restart the animation
+    levelBannerEl.classList.add('show');
+  }
   function updateProgress(){
     if(levelUpAnim) return;            // hold "full" display during level-up flash
     const prog = (score||0) - levelBaseScore;
@@ -293,6 +331,9 @@
     if(leveled) levelUpEffect(); else updateProgress();
   }
   function levelUpEffect(){
+    // reset the board + effects for the fresh level
+    grid = newGrid();
+    particles = []; flash = 0; shake = 0; acc = 0;
     // momentary full gauge + flash + sound + fill one more star, then settle
     levelUpAnim = true;
     gaugeFillEl.style.height = '100%';
@@ -300,10 +341,11 @@
     for(let i=0;i<10;i++) starEls[i].classList.toggle('on', i < filled);
     gaugeEl.classList.add('flash');
     SFX.levelup();
+    showLevelBanner();          // big gold blinking "LEVEL N" in the center
     setTimeout(()=>{
       gaugeEl.classList.remove('flash');
       levelUpAnim = false;
-      updateProgress();
+      updateProgress();         // reset gauge to the new (near-empty) progress
     }, 750);
   }
 
