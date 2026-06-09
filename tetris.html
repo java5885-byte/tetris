@@ -99,7 +99,7 @@
     height: 100%;
     width: auto;
     aspect-ratio: 1 / 2;
-    max-width: calc(100vw - 96px);
+    max-width: calc(100vw - 110px);
   }
 
   /* ---- LEFT: level progress gauge ---- */
@@ -129,7 +129,7 @@
   /* ---- RIGHT: golden stars ---- */
   .stars {
     height: 100%;
-    width: 30px;
+    width: 40px;
     display: flex;
     flex-direction: column-reverse;
     align-items: center;
@@ -138,15 +138,15 @@
     flex: 0 0 auto;
   }
   .stars .star {
-    font-size: 22px;
+    font-size: 32px;
     line-height: 1;
     color: #2a2d52;
     transition: color .25s, transform .25s, text-shadow .25s;
   }
   .stars .star.on {
     color: #ffd54f;
-    text-shadow: 0 0 8px rgba(255,213,79,.85);
-    transform: scale(1.18);
+    text-shadow: 0 0 12px rgba(255,213,79,.9);
+    transform: scale(1.2);
   }
 
   /* ---- BOTTOM: control pad ---- */
@@ -249,8 +249,7 @@
   const nextCanvas = document.getElementById('next');
   const nctx = nextCanvas.getContext('2d');
 
-  // ---- level progress gauge + golden stars ----
-  const LINES_PER_LEVEL = 10;
+  // ---- level progress gauge + golden stars (score-based) ----
   const gaugeEl = document.getElementById('gauge');
   const gaugeFillEl = document.getElementById('gaugeFill');
   const starsEl = document.getElementById('stars');
@@ -262,18 +261,36 @@
     starsEl.appendChild(s);
     starEls.push(s);
   }
+  let levelBaseScore = 0;              // score at the start of the current level
+  function levelGoal(lv){ return 500 + (lv-1)*300; }  // points needed to clear level lv
   let levelUpAnim = false;
   function updateProgress(){
-    if(levelUpAnim) return;              // hold "full" display during level-up flash
-    const inLevel = (typeof lines === 'number' ? lines : 0) % LINES_PER_LEVEL;
-    gaugeFillEl.style.height = (inLevel / LINES_PER_LEVEL * 100) + '%';
-    for(let i=0;i<10;i++) starEls[i].classList.toggle('on', i < inLevel);
+    if(levelUpAnim) return;            // hold "full" display during level-up flash
+    const prog = (score||0) - levelBaseScore;
+    const pct = Math.max(0, Math.min(100, prog / levelGoal(level) * 100));
+    gaugeFillEl.style.height = pct + '%';
+    const filled = Math.min(10, (level||1) - 1);
+    for(let i=0;i<10;i++) starEls[i].classList.toggle('on', i < filled);
+  }
+  // call after score changes; advances level(s) when the goal is reached
+  function checkLevelUp(){
+    let leveled = false;
+    while(score - levelBaseScore >= levelGoal(level)){
+      levelBaseScore += levelGoal(level);
+      level++;
+      dropInterval = baseInterval(level);
+      levelTimer = 0;
+      leveled = true;
+    }
+    updateStats();
+    if(leveled) levelUpEffect(); else updateProgress();
   }
   function levelUpEffect(){
-    // fill gauge + light all stars, flash, sound, then reset to new level
+    // momentary full gauge + flash + sound + fill one more star, then settle
     levelUpAnim = true;
     gaugeFillEl.style.height = '100%';
-    starEls.forEach(s=> s.classList.add('on'));
+    const filled = Math.min(10, level - 1);
+    for(let i=0;i<10;i++) starEls[i].classList.toggle('on', i < filled);
     gaugeEl.classList.add('flash');
     SFX.levelup();
     setTimeout(()=>{
@@ -485,20 +502,16 @@
 
     (cleared >= 4 ? SFX.clear4 : SFX.clear1)();
 
-    const pts = [0,100,300,500,800][cleared] * level;
+    // multi-line bonus: +10% per line cleared at once
+    // 1 line ×1.0, 2 lines ×1.1, 3 lines ×1.2, 4 lines ×1.3
+    const basePerLine = 100 * level;
+    const bonusMult = 1 + 0.1 * (cleared - 1);
+    const pts = Math.round(basePerLine * cleared * bonusMult);
     score += pts;
     lines += cleared;
-    const newLevel = Math.floor(lines / 10) + 1;
-    if(newLevel !== level){
-      // new level: reset to base speed and restart the 30s speedup timer
-      level = newLevel;
-      dropInterval = baseInterval(level);
-      levelTimer = 0;
-      levelUpEffect();   // gauge full + flash + sound, then resets
-    } else {
-      updateProgress();
-    }
+
     updateStats();
+    checkLevelUp();   // score-based: advances level(s) + gauge/stars/flash/sound
   }
 
   function updateStats(){
@@ -646,7 +659,7 @@
 
   function startGame(){
     grid = newGrid();
-    score = 0; level = 1; lines = 0;
+    score = 0; level = 1; lines = 0; levelBaseScore = 0;
     gameOver = false; paused = false; running = true;
     dropInterval = baseInterval(1); acc = 0; lastTime = 0; levelTimer = 0;
     particles = []; flash = 0; shake = 0;
