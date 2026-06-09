@@ -224,6 +224,33 @@
     100% { opacity: 0; transform: scale(1.05); }
   }
 
+  /* ---- combo banner (cyan, blinking, upper area) ---- */
+  .combo-banner {
+    position: absolute;
+    left: 0; right: 0; top: 24%;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 7;
+    opacity: 0;
+  }
+  .combo-banner span {
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #7fe3ff;
+    text-shadow: 0 0 16px rgba(127,227,255,.95), 0 0 34px rgba(60,180,255,.6), 0 2px 4px rgba(0,0,0,.6);
+  }
+  .combo-banner.show { animation: comboBlink 1.2s ease both; }
+  @keyframes comboBlink {
+    0%   { opacity: 0; transform: scale(.5); }
+    14%  { opacity: 1; transform: scale(1.15); }
+    30%, 60% { opacity: 1; }
+    45%, 75% { opacity: .1; }
+    88%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.05); }
+  }
+
   .btn {
     background: var(--accent);
     color: #fff;
@@ -258,6 +285,7 @@
       <div class="gauge" id="gauge"><div class="gauge-fill" id="gaugeFill"></div></div>
       <div class="board-wrap">
         <canvas id="board"></canvas>
+        <div class="combo-banner" id="comboBanner"><span>2 COMBO</span></div>
         <div class="level-banner" id="levelBanner"><span>LEVEL 1</span></div>
         <div class="overlay" id="overlay">
           <h1>테트리스</h1>
@@ -299,15 +327,22 @@
     starEls.push(s);
   }
   const levelBannerEl = document.getElementById('levelBanner');
+  const comboBannerEl = document.getElementById('comboBanner');
   let levelBaseScore = 0;              // score at the start of the current level
-  // points needed to clear a level — doubles each level (500, 1000, 2000, 4000 ...)
-  function levelGoal(lv){ return 500 * Math.pow(2, lv-1); }
+  // points needed to clear a level — quadruples each level (500, 2000, 8000, 32000 ...)
+  function levelGoal(lv){ return 500 * Math.pow(4, lv-1); }
   let levelUpAnim = false;
   function showLevelBanner(){
     levelBannerEl.querySelector('span').textContent = 'LEVEL ' + level;
     levelBannerEl.classList.remove('show');
     void levelBannerEl.offsetWidth;    // reflow to restart the animation
     levelBannerEl.classList.add('show');
+  }
+  function showComboBanner(n){
+    comboBannerEl.querySelector('span').textContent = n + ' COMBO';
+    comboBannerEl.classList.remove('show');
+    void comboBannerEl.offsetWidth;
+    comboBannerEl.classList.add('show');
   }
   function updateProgress(){
     if(levelUpAnim) return;            // hold "full" display during level-up flash
@@ -317,18 +352,19 @@
     const filled = Math.min(10, (level||1) - 1);
     for(let i=0;i<10;i++) starEls[i].classList.toggle('on', i < filled);
   }
-  // call after score changes; advances level(s) when the goal is reached
+  // call after score changes; advances one level when the goal is reached
   function checkLevelUp(){
-    let leveled = false;
-    while(score - levelBaseScore >= levelGoal(level)){
-      levelBaseScore += levelGoal(level);
+    if(score - levelBaseScore >= levelGoal(level)){
       level++;
+      levelBaseScore = score;   // reset gauge to 0 (discard any leftover score)
       dropInterval = baseInterval(level);
       levelTimer = 0;
-      leveled = true;
+      updateStats();
+      levelUpEffect();
+    } else {
+      updateStats();
+      updateProgress();
     }
-    updateStats();
-    if(leveled) levelUpEffect(); else updateProgress();
   }
   function levelUpEffect(){
     // reset the board + effects for the fresh level
@@ -551,16 +587,17 @@
 
     (cleared >= 4 ? SFX.clear4 : SFX.clear1)();
 
-    // multi-line bonus: +10% per line cleared at once
-    // 1 line ×1.0, 2 lines ×1.1, 3 lines ×1.2, 4 lines ×1.3
+    // combo: clearing 2/3/4 lines at once multiplies the score ×2 / ×3 / ×4
     const basePerLine = 100 * level;
-    const bonusMult = 1 + 0.1 * (cleared - 1);
-    const pts = Math.round(basePerLine * cleared * bonusMult);
+    const comboMult = cleared >= 2 ? cleared : 1;
+    const pts = basePerLine * cleared * comboMult;
     score += pts;
     lines += cleared;
 
+    if(cleared >= 2) showComboBanner(cleared);   // "2 COMBO" / "3 COMBO" / "4 COMBO"
+
     updateStats();
-    checkLevelUp();   // score-based: advances level(s) + gauge/stars/flash/sound
+    checkLevelUp();   // score-based: advances level + gauge/stars/flash/sound/banner
   }
 
   function updateStats(){
