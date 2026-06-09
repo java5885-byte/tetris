@@ -221,6 +221,10 @@
 
   let grid, current, nextPiece, score, level, lines, gameOver, paused, running;
   let dropInterval, dropTimer, rafId, lastTime, acc;
+  let levelTimer = 0;          // ms elapsed within current level
+  const SPEEDUP_MS = 30000;    // every 30s
+  const SPEEDUP_FACTOR = 0.9;  // 10% faster
+  function baseInterval(lv){ return Math.max(80, 800 - (lv-1)*70); }
   let particles = [], flash = 0, shake = 0, soundOn = true;
 
   // ---- Sound engine (Web Audio, no external files) ----
@@ -399,8 +403,13 @@
     const pts = [0,100,300,500,800][cleared] * level;
     score += pts;
     lines += cleared;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(80, 800 - (level-1)*70);
+    const newLevel = Math.floor(lines / 10) + 1;
+    if(newLevel !== level){
+      // new level: reset to base speed and restart the 30s speedup timer
+      level = newLevel;
+      dropInterval = baseInterval(level);
+      levelTimer = 0;
+    }
     updateStats();
   }
 
@@ -519,6 +528,12 @@
     const dt = time - lastTime;
     lastTime = time;
     if(!paused && !gameOver){
+      // within-level speedup: every 30s, drop 10% faster
+      levelTimer += dt;
+      while(levelTimer >= SPEEDUP_MS){
+        levelTimer -= SPEEDUP_MS;
+        dropInterval = Math.max(40, dropInterval * SPEEDUP_FACTOR);
+      }
       acc += dt;
       if(acc >= dropInterval){
         acc = 0;
@@ -545,7 +560,7 @@
     grid = newGrid();
     score = 0; level = 1; lines = 0;
     gameOver = false; paused = false; running = true;
-    dropInterval = 800; acc = 0; lastTime = 0;
+    dropInterval = baseInterval(1); acc = 0; lastTime = 0; levelTimer = 0;
     particles = []; flash = 0; shake = 0;
     audio();
     nextPiece = makePiece(randomType());
