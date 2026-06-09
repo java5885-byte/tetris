@@ -174,13 +174,13 @@
     cursor: pointer;
   }
   .controls button:active { background: var(--accent); }
-  /* round yellow hard-drop, just left of the centered keypad */
+  /* round yellow hard-drop, just right of the centered keypad */
   .controls .harddrop {
-    grid-column: 1;
-    justify-self: end;
-    margin-right: 18px;
-    width: 68px;
-    height: 68px;
+    grid-column: 3;
+    justify-self: start;
+    margin-left: 12px;
+    width: 62px;
+    height: 62px;
     border-radius: 50%;
     font-size: 30px;
     background: radial-gradient(circle at 35% 30%, #fff0a8, #f4b400 70%);
@@ -195,11 +195,11 @@
     grid-column: 2;
     justify-self: center;
     display: grid;
-    grid-template-columns: repeat(3, 58px);
-    grid-template-rows: repeat(2, 52px);
+    grid-template-columns: repeat(3, 64px);
+    grid-template-rows: repeat(2, 58px);
     gap: 6px;
   }
-  .dpad button { width: 100%; height: 100%; }
+  .dpad button { width: 100%; height: 100%; font-size: 30px; }
   .dpad .up    { grid-column: 2; grid-row: 1; }
   .dpad .left  { grid-column: 1; grid-row: 2; }
   .dpad .down  { grid-column: 2; grid-row: 2; }
@@ -279,6 +279,21 @@
     100% { opacity: 0; transform: scale(1.05); }
   }
 
+  /* ---- win screen ---- */
+  .win-overlay { background: rgba(8,9,20,.94); }
+  .win-overlay h1 { color: #ffd24d; text-shadow: 0 0 18px rgba(255,210,77,.7); }
+  .win-overlay .big-star {
+    font-size: 120px;
+    line-height: 1;
+    color: #ffd24d;
+    text-shadow: 0 0 30px rgba(255,210,77,.95), 0 0 64px rgba(255,170,0,.6);
+    animation: starPulse 1.3s ease-in-out infinite;
+  }
+  @keyframes starPulse {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.18) rotate(10deg); }
+  }
+
   .btn {
     background: var(--accent);
     color: #fff;
@@ -319,6 +334,12 @@
           <h1>테트리스</h1>
           <p>블록을 쌓아 가로줄을 채우세요. 줄이 완성되면 사라집니다.</p>
           <button class="btn" id="startBtn">게임 시작</button>
+        </div>
+        <div class="overlay win-overlay hidden" id="winOverlay">
+          <div class="big-star">★</div>
+          <h1>미션 완료!</h1>
+          <p>축하합니다 🎉<br>모든 레벨을 클리어했습니다!</p>
+          <button class="btn" id="winRestartBtn">다시 시작</button>
         </div>
       </div>
       <div class="stars" id="stars"></div>
@@ -361,8 +382,9 @@
   const levelBannerEl = document.getElementById('levelBanner');
   const comboBannerEl = document.getElementById('comboBanner');
   let levelBaseScore = 0;              // score at the start of the current level
-  // points needed to clear a level — triples each level (500, 1500, 4500, 13500 ...)
-  function levelGoal(lv){ return 500 * Math.pow(3, lv-1); }
+  // points needed to clear a level — doubles each level (500, 1000, 2000, 4000 ...)
+  function levelGoal(lv){ return 500 * Math.pow(2, lv-1); }
+  const MAX_LEVEL = 10;   // clearing level 10 wins the game
   let levelUpAnim = false;
   function showLevelBanner(){
     levelBannerEl.querySelector('span').textContent = 'LEVEL ' + level;
@@ -392,11 +414,23 @@
       dropInterval = baseInterval(level);
       levelTimer = 0;
       updateStats();
+      if(level > MAX_LEVEL){ winGame(); return; }   // cleared level 10 → win
       levelUpEffect();
     } else {
       updateStats();
       updateProgress();
     }
+  }
+  const winOverlayEl = document.getElementById('winOverlay');
+  function winGame(){
+    running = false; gameOver = true;
+    grid = newGrid();                  // clear the board
+    particles = []; flash = 0; shake = 0;
+    gaugeFillEl.style.height = '100%';
+    starEls.forEach(s=> s.classList.add('on'));  // all 10 stars lit
+    draw();
+    SFX.levelup();
+    winOverlayEl.classList.remove('hidden');
   }
   function levelUpEffect(){
     // reset the board + effects for the fresh level
@@ -788,6 +822,7 @@
     levelUpAnim = false;
     updateProgress();
     document.getElementById('overlay').classList.add('hidden');
+    winOverlayEl.classList.add('hidden');
     document.getElementById('pauseBtn').textContent = '⏸';
     cancelAnimationFrame(rafId);
     rafId = requestAnimationFrame(loop);
@@ -867,6 +902,7 @@
   });
 
   document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('winRestartBtn').addEventListener('click', startGame);
   document.getElementById('pauseBtn').addEventListener('click', togglePause);
   document.getElementById('soundBtn').addEventListener('click', e=>{
     soundOn = !soundOn;
