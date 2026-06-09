@@ -40,7 +40,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 10px 14px;
+    padding: 6px 14px;
   }
   .stats { display: flex; gap: 10px; flex: 1; }
   .stat {
@@ -86,7 +86,7 @@
     gap: 8px;
     position: relative;
     min-height: 0;
-    padding: 6px;
+    padding: 4px;
   }
   .board-wrap { position: relative; height: 100%; display: flex; align-items: center; }
   canvas#board {
@@ -99,7 +99,7 @@
     height: 100%;
     width: auto;
     aspect-ratio: 1 / 2;
-    max-width: calc(100vw - 116px);
+    max-width: calc(100vw - 104px);
   }
 
   /* ---- LEFT: level progress gauge ---- */
@@ -160,13 +160,13 @@
   .controls {
     flex: 0 0 auto;
     width: 100%;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;  /* keypad centered, hard-drop hugs its left */
+    display: flex;
     align-items: center;
-    padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
+    justify-content: center;
+    padding: 6px 14px calc(8px + env(safe-area-inset-bottom));
   }
   .controls button {
-    font-size: 26px;
+    font-size: 32px;
     background: var(--panel);
     border: 1px solid var(--grid);
     border-radius: 12px;
@@ -174,36 +174,29 @@
     cursor: pointer;
   }
   .controls button:active { background: var(--accent); }
-  /* round yellow hard-drop, just right of the centered keypad */
-  .controls .harddrop {
-    grid-column: 3;
-    justify-self: start;
-    margin-left: 12px;
-    width: 62px;
-    height: 62px;
-    border-radius: 50%;
-    font-size: 30px;
-    background: radial-gradient(circle at 35% 30%, #fff0a8, #f4b400 70%);
+  /* keypad: ▲ on top, ◀ ▼ ▶ across the middle, hard-drop square beside ▶ */
+  .dpad {
+    display: grid;
+    grid-template-columns: repeat(4, 74px);
+    grid-template-rows: repeat(2, 68px);
+    gap: 7px;
+  }
+  .dpad button { width: 100%; height: 100%; }
+  .dpad .up    { grid-column: 2; grid-row: 1; }
+  .dpad .left  { grid-column: 1; grid-row: 2; }
+  .dpad .down  { grid-column: 2; grid-row: 2; }
+  .dpad .right { grid-column: 3; grid-row: 2; }
+  /* square yellow hard-drop, right next to the right-move key */
+  .dpad .harddrop {
+    grid-column: 4;
+    grid-row: 2;
+    background: linear-gradient(to bottom, #ffe27a, #f4b400);
     border: 1px solid #d99a00;
     color: #5a3e00;
     font-weight: 800;
     box-shadow: inset 0 2px 3px rgba(255,255,255,.6), 0 3px 6px rgba(0,0,0,.4);
   }
-  .controls .harddrop:active { background: radial-gradient(circle at 35% 30%, #ffd24d, #e0a400 70%); }
-  /* arrow keypad: ▲ on top, ◀ ▼ ▶ across the middle — centered in the game */
-  .dpad {
-    grid-column: 2;
-    justify-self: center;
-    display: grid;
-    grid-template-columns: repeat(3, 64px);
-    grid-template-rows: repeat(2, 58px);
-    gap: 6px;
-  }
-  .dpad button { width: 100%; height: 100%; font-size: 30px; }
-  .dpad .up    { grid-column: 2; grid-row: 1; }
-  .dpad .left  { grid-column: 1; grid-row: 2; }
-  .dpad .down  { grid-column: 2; grid-row: 2; }
-  .dpad .right { grid-column: 3; grid-row: 2; }
+  .dpad .harddrop:active { background: linear-gradient(to bottom, #ffd24d, #e0a400); }
 
   /* ---- overlay ---- */
   .overlay {
@@ -345,14 +338,14 @@
       <div class="stars" id="stars"></div>
     </div>
 
-    <!-- BOTTOM: control pad (D-pad + yellow hard drop) -->
+    <!-- BOTTOM: control pad (keypad with hard-drop beside right) -->
     <div class="controls" id="touch">
-      <button class="harddrop" data-act="drop">⤓</button>
       <div class="dpad">
         <button class="up" data-act="rotate">▲</button>
         <button class="left" data-act="left">◀</button>
         <button class="down" data-act="down">▼</button>
         <button class="right" data-act="right">▶</button>
+        <button class="harddrop" data-act="drop">⤓</button>
       </div>
     </div>
   </div>
