@@ -465,6 +465,7 @@
     comboBannerEl.classList.add('show');
   }
   function updateProgress(){
+    if(battle) return;                 // no gauge/stars in battle
     if(levelUpAnim) return;            // hold "full" display during level-up flash
     const prog = (score||0) - levelBaseScore;
     const pct = Math.max(0, Math.min(100, prog / levelGoal(level) * 100));
@@ -474,6 +475,7 @@
   }
   // call after score changes; advances one level when the goal is reached
   function checkLevelUp(){
+    if(battle){ updateStats(); return; }   // battle: no levels / gauge / stars
     if(score - levelBaseScore >= levelGoal(level)){
       level++;
       levelBaseScore = score;   // reset gauge to 0 (discard any leftover score)
@@ -903,6 +905,9 @@
     spawn();
     updateStats();
     levelUpAnim = false;
+    // gauge + golden stars only in solo mode (removed in battle)
+    gaugeEl.classList.toggle('hidden', battle);
+    starsEl.classList.toggle('hidden', battle);
     updateProgress();
     document.getElementById('overlay').classList.add('hidden');
     winOverlayEl.classList.add('hidden');
