@@ -463,8 +463,8 @@
   const levelBannerEl = document.getElementById('levelBanner');
   const comboBannerEl = document.getElementById('comboBanner');
   let levelBaseScore = 0;              // score at the start of the current level
-  // points needed to clear a level — 10000 per level (10000, 20000, ... 100000)
-  function levelGoal(lv){ return 10000 * lv; }
+  // points needed to clear a level — 5000 per level (5000, 10000, ... 50000)
+  function levelGoal(lv){ return 5000 * lv; }
   const MAX_LEVEL = 10;   // clearing level 10 wins the game
   let levelUpAnim = false;
   function showLevelBanner(){
