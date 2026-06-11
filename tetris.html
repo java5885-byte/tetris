@@ -281,7 +281,7 @@
     pointer-events: none; z-index: 7; opacity: 0;
   }
   .streak-banner span {
-    font-size: 40px; font-weight: 800; letter-spacing: 2px;
+    font-size: 28px; font-weight: 800; letter-spacing: 1px; white-space: nowrap;
     color: #ff9d4d;
     text-shadow: 0 0 16px rgba(255,140,40,.95), 0 0 34px rgba(255,90,0,.6), 0 2px 4px rgba(0,0,0,.6);
   }
@@ -482,8 +482,8 @@
   const streakBannerEl = document.getElementById('streakBanner');
   let streak = 0;          // consecutive line-clearing placements (back-to-back)
   let prevClearBase = 0;   // base score of the previous clear in the current streak
-  function showStreakBanner(n){
-    streakBannerEl.querySelector('span').textContent = n + '연속';
+  function showStreakBanner(n, bonus){
+    streakBannerEl.querySelector('span').textContent = n + '연속 +' + bonus.toLocaleString();
     streakBannerEl.classList.remove('show');
     void streakBannerEl.offsetWidth;
     streakBannerEl.classList.add('show');
@@ -758,25 +758,20 @@
     const basePerLine = 100 * level;
     const comboMult = cleared >= 2 ? Math.pow(2, cleared - 1) : 1;   // 2x, 4x, 8x
     const thisBase = basePerLine * cleared * comboMult;
-    // streak: back-to-back clears award (prev clear score + this clear score) × 4 / 8 / 16 ...
-    let awarded;
-    if(streak >= 2){
-      awarded = (prevClearBase + thisBase) * Math.pow(2, streak);    // 2연속 ×4, 3연속 ×8, 4연속 ×16
-    } else {
-      awarded = thisBase;
-    }
-    prevClearBase = thisBase;
-    score += awarded;
+
+    // streak bonus: +10000 per consecutive clear (2연속 +10000, 3연속 +20000, 4연속 +30000 ...)
+    const streakBonus = streak >= 2 ? (streak - 1) * 10000 : 0;
+
+    // line-clear flat bonus (many lines at once): 3줄 +10000, 4줄 +20000
+    let lineBonus = 0;
+    if(cleared === 3) lineBonus += 10000;
+    if(cleared >= 4) lineBonus += 20000;
+
+    score += thisBase + streakBonus + lineBonus;
     lines += cleared;
 
-    // flat bonus: 3연속/3줄 → +10000, 4연속(이상)/4줄 → +20000
-    let bonus = 0;
-    if(cleared === 3 || streak === 3) bonus += 10000;
-    if(cleared >= 4 || streak >= 4) bonus += 20000;
-    if(bonus) score += bonus;
-
-    if(cleared >= 2) showComboBanner(cleared);   // "2 COMBO" / "3 COMBO" / "4 COMBO"
-    if(streak >= 2) showStreakBanner(streak);    // "2연속" / "3연속" / "N연속"
+    if(cleared >= 2) showComboBanner(cleared);            // "2 COMBO" / "3 COMBO" / "4 COMBO"
+    if(streak >= 2) showStreakBanner(streak, streakBonus); // "N연속 +X"
 
     // BATTLE: send that many garbage lines to the opponent
     if(battle && conn && conn.open && cleared > 0){
