@@ -769,6 +769,12 @@
     score += awarded;
     lines += cleared;
 
+    // flat bonus: 3연속/3줄 → +10000, 4연속(이상)/4줄 → +20000
+    let bonus = 0;
+    if(cleared === 3 || streak === 3) bonus += 10000;
+    if(cleared >= 4 || streak >= 4) bonus += 20000;
+    if(bonus) score += bonus;
+
     if(cleared >= 2) showComboBanner(cleared);   // "2 COMBO" / "3 COMBO" / "4 COMBO"
     if(streak >= 2) showStreakBanner(streak);    // "2연속" / "3연속" / "N연속"
 
