@@ -273,6 +273,20 @@
     100% { opacity: 0; transform: scale(1.05); }
   }
 
+  /* ---- consecutive-clear streak banner (orange, lower) ---- */
+  .streak-banner {
+    position: absolute;
+    left: 0; right: 0; top: 40%;
+    display: flex; justify-content: center;
+    pointer-events: none; z-index: 7; opacity: 0;
+  }
+  .streak-banner span {
+    font-size: 40px; font-weight: 800; letter-spacing: 2px;
+    color: #ff9d4d;
+    text-shadow: 0 0 16px rgba(255,140,40,.95), 0 0 34px rgba(255,90,0,.6), 0 2px 4px rgba(0,0,0,.6);
+  }
+  .streak-banner.show { animation: comboBlink 1.2s ease both; }
+
   /* ---- win screen ---- */
   .win-overlay { background: rgba(8,9,20,.94); }
   .win-overlay h1 { color: #ffd24d; text-shadow: 0 0 18px rgba(255,210,77,.7); }
@@ -366,6 +380,7 @@
       <div class="board-wrap">
         <canvas id="board"></canvas>
         <div class="combo-banner" id="comboBanner"><span>2 COMBO</span></div>
+        <div class="streak-banner" id="streakBanner"><span>2연속</span></div>
         <div class="level-banner" id="levelBanner"><span>LEVEL 1</span></div>
         <div class="overlay" id="overlay">
           <h1>테트리스</h1>
@@ -463,6 +478,14 @@
     comboBannerEl.classList.remove('show');
     void comboBannerEl.offsetWidth;
     comboBannerEl.classList.add('show');
+  }
+  const streakBannerEl = document.getElementById('streakBanner');
+  let streak = 0;   // consecutive line-clearing placements (back-to-back)
+  function showStreakBanner(n){
+    streakBannerEl.querySelector('span').textContent = n + '연속';
+    streakBannerEl.classList.remove('show');
+    void streakBannerEl.offsetWidth;
+    streakBannerEl.classList.add('show');
   }
   function updateProgress(){
     if(battle) return;                 // no gauge/stars in battle
@@ -716,7 +739,7 @@
     for(let y=0; y<ROWS; y++){
       if(grid[y].every(cell => cell)) fullRows.push(y);
     }
-    if(!fullRows.length) return;
+    if(!fullRows.length){ streak = 0; return; }   // placement without a clear breaks the streak
 
     // visual effects before removal
     fullRows.forEach(spawnParticles);
@@ -733,13 +756,17 @@
     (cleared >= 4 ? SFX.clear4 : SFX.clear1)();
 
     // combo: clearing 2/3/4 lines at once multiplies the score ×2 / ×3 / ×4
+    // streak: clearing on back-to-back placements multiplies score ×2 / ×3 / ×N
+    streak += 1;
     const basePerLine = 100 * level;
     const comboMult = cleared >= 2 ? cleared : 1;
-    const pts = basePerLine * cleared * comboMult;
+    const streakMult = streak >= 2 ? streak : 1;
+    const pts = basePerLine * cleared * comboMult * streakMult;
     score += pts;
     lines += cleared;
 
     if(cleared >= 2) showComboBanner(cleared);   // "2 COMBO" / "3 COMBO" / "4 COMBO"
+    if(streak >= 2) showStreakBanner(streak);    // "2연속" / "3연속" / "N연속"
 
     // BATTLE: send that many garbage lines to the opponent
     if(battle && conn && conn.open && cleared > 0){
@@ -802,6 +829,17 @@
     // inner face (slightly lighter center)
     c.fillStyle = col;
     c.fillRect(x0+b, y0+b, s-2*b, s-2*b);
+    // ---- glossy sheen (top half) ----
+    const ix = x0+b, iy = y0+b, iw = s-2*b, ih = s-2*b;
+    const g = c.createLinearGradient(ix, iy, ix, iy+ih);
+    g.addColorStop(0,   'rgba(255,255,255,0.5)');
+    g.addColorStop(0.45,'rgba(255,255,255,0.12)');
+    g.addColorStop(0.5, 'rgba(255,255,255,0.0)');
+    c.fillStyle = g;
+    c.fillRect(ix, iy, iw, ih*0.55);
+    // bright corner glint
+    c.fillStyle = 'rgba(255,255,255,0.55)';
+    c.fillRect(ix+1, iy+1, Math.max(2, iw*0.28), Math.max(2, ih*0.18));
     // subtle outline
     c.strokeStyle = 'rgba(0,0,0,0.12)';
     c.lineWidth = 1;
@@ -896,7 +934,7 @@
 
   function startGame(){
     grid = newGrid();
-    score = 0; level = 1; lines = 0; levelBaseScore = 0;
+    score = 0; level = 1; lines = 0; levelBaseScore = 0; streak = 0;
     gameOver = false; paused = false; running = true;
     dropInterval = baseInterval(1); acc = 0; lastTime = 0; levelTimer = 0;
     particles = []; flash = 0; shake = 0;
