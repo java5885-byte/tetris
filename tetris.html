@@ -516,7 +516,7 @@
   function winGame(){
     running = false; gameOver = true;
     grid = newGrid();                  // clear the board
-    particles = []; flash = 0; shake = 0;
+    particles = []; flash = 0; shake = 0; flashRows = []; flashRowTimer = 0;
     gaugeFillEl.style.height = '100%';
     starEls.forEach(s=> s.classList.add('on'));  // all 10 stars lit
     draw();
@@ -526,7 +526,7 @@
   function levelUpEffect(){
     // reset the board + effects for the fresh level
     grid = newGrid();
-    particles = []; flash = 0; shake = 0; acc = 0;
+    particles = []; flash = 0; shake = 0; acc = 0; flashRows = []; flashRowTimer = 0;
     // momentary full gauge + flash + sound + fill one more star, then settle
     levelUpAnim = true;
     gaugeFillEl.style.height = '100%';
@@ -569,6 +569,7 @@
   const SPEEDUP_FACTOR = 0.9;  // 10% faster
   function baseInterval(lv){ return Math.max(80, 800 - (lv-1)*70); }
   let particles = [], flash = 0, shake = 0, soundOn = true;
+  let flashRows = [], flashRowTimer = 0;   // rows blinking white before they clear
 
   // ---- Sound engine (Web Audio, no external files) ----
   let actx = null;
@@ -603,7 +604,8 @@
     clear1: ()=> chord([523,659,784], 0.18, 'square', 0.13),
     clear4: ()=> chord([523,659,784,1047,1319], 0.22, 'square', 0.16),
     over:   ()=> chord([392,330,262,196], 0.3, 'sawtooth', 0.14),
-    levelup:()=> chord([523,659,784,1047,1319,1568], 0.22, 'triangle', 0.16)
+    levelup:()=> chord([523,659,784,1047,1319,1568], 0.22, 'triangle', 0.16),
+    flashClear: ()=> { tone(1760, 0.05, 'sine', 0.16); tone(2349, 0.06, 'sine', 0.12); }  // bright white-blink
   };
 
   function newGrid(){
@@ -734,6 +736,7 @@
   }
 
   function clearLines(){
+    if(flashRows.length) finishClear();   // resolve a still-pending blink first
     // find full rows first (for effects)
     const fullRows = [];
     for(let y=0; y<ROWS; y++){
@@ -741,32 +744,26 @@
     }
     if(!fullRows.length){ streak = 0; return; }   // placement without a clear breaks the streak
 
-    // visual effects before removal
-    fullRows.forEach(spawnParticles);
-    flash = 1;
-    shake = Math.min(fullRows.length * 4, 14);
-
     const cleared = fullRows.length;
-    // remove rows
-    for(const y of fullRows){
-      grid.splice(y, 1);
-      grid.unshift(Array(COLS).fill(null));
-    }
 
-    (cleared >= 4 ? SFX.clear4 : SFX.clear1)();
+    // ---- white blink BEFORE the rows disappear ----
+    flashRows = fullRows.slice();
+    flashRowTimer = 150;          // ms the completed rows blink white before clearing
+    flash = 1;                    // full-board white overlay
+    SFX.flashClear();             // bright white-blink sound
 
     // combo: clearing 2/3/4 lines at once multiplies the score ×2 / ×3 / ×4
-    // streak: clearing on back-to-back placements multiplies score ×2 / ×3 / ×N
+    // streak: clearing on back-to-back placements multiplies score ×2 / ×4 / ×8 ...
     streak += 1;
     const basePerLine = 100 * level;
     const comboMult = cleared >= 2 ? cleared : 1;
-    const streakMult = streak >= 2 ? streak : 1;
+    const streakMult = streak >= 2 ? Math.pow(2, streak - 1) : 1;   // 2x, 4x, 8x, ...
     const pts = basePerLine * cleared * comboMult * streakMult;
     score += pts;
     lines += cleared;
 
     if(cleared >= 2) showComboBanner(cleared);   // "2 COMBO" / "3 COMBO" / "4 COMBO"
-    if(streak >= 2) showStreakBanner(streak);    // "2연속" / "3연속" / "N연속"
+    if(streak >= 2) showStreakBanner(streak);    // "2연속" / "3연속" / "N연속" (×2/×4/×8)
 
     // BATTLE: send that many garbage lines to the opponent
     if(battle && conn && conn.open && cleared > 0){
@@ -775,6 +772,21 @@
 
     updateStats();
     checkLevelUp();   // score-based: advances level + gauge/stars/flash/sound/banner
+  }
+
+  // remove the flashed rows after the white blink
+  function finishClear(){
+    if(!flashRows.length) return;
+    flashRows.forEach(spawnParticles);
+    shake = Math.min(flashRows.length * 4, 14);
+    (flashRows.length >= 4 ? SFX.clear4 : SFX.clear1)();
+    const rows = flashRows.slice().sort((a,b)=>a-b);
+    for(const y of rows){
+      grid.splice(y, 1);
+      grid.unshift(Array(COLS).fill(null));
+    }
+    flashRows = [];
+    flashRowTimer = 0;
   }
 
   function updateStats(){
@@ -860,6 +872,11 @@
     // settled
     for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++)
       if(grid[y][x]) drawCell(ctx, x, y, grid[y][x]);
+    // completed rows blink white before they clear
+    if(flashRows.length){
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      for(const y of flashRows) ctx.fillRect(0, y*CELL, board.width, CELL);
+    }
     if(current && !gameOver){
       // active
       for(const c of current.cells){
@@ -925,6 +942,7 @@
       p.life -= 0.025 * f;
     }
     particles = particles.filter(p => p.life > 0);
+    if(flashRowTimer > 0){ flashRowTimer -= dt; if(flashRowTimer <= 0) finishClear(); }
     if(flash > 0) flash = Math.max(0, flash - 0.06 * f);
     if(shake > 0) shake = Math.max(0, shake - 0.6 * f);
     draw();
@@ -937,7 +955,7 @@
     score = 0; level = 1; lines = 0; levelBaseScore = 0; streak = 0;
     gameOver = false; paused = false; running = true;
     dropInterval = baseInterval(1); acc = 0; lastTime = 0; levelTimer = 0;
-    particles = []; flash = 0; shake = 0;
+    particles = []; flash = 0; shake = 0; flashRows = []; flashRowTimer = 0;
     audio();
     nextPiece = makePiece(randomType());
     spawn();
@@ -1115,6 +1133,7 @@
   // ---- garbage lines pushed up from the bottom ----
   function addGarbage(n){
     if(!running || gameOver) return;
+    if(flashRows.length) finishClear();   // resolve any pending line-clear first
     for(let k=0;k<n;k++){
       if(grid[0].some(c=>c)){ loseBattle(); return; }   // overflow = defeat
       grid.shift();
