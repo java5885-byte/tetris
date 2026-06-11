@@ -480,7 +480,8 @@
     comboBannerEl.classList.add('show');
   }
   const streakBannerEl = document.getElementById('streakBanner');
-  let streak = 0;   // consecutive line-clearing placements (back-to-back)
+  let streak = 0;          // consecutive line-clearing placements (back-to-back)
+  let prevClearBase = 0;   // base score of the previous clear in the current streak
   function showStreakBanner(n){
     streakBannerEl.querySelector('span').textContent = n + '연속';
     streakBannerEl.classList.remove('show');
@@ -742,7 +743,7 @@
     for(let y=0; y<ROWS; y++){
       if(grid[y].every(cell => cell)) fullRows.push(y);
     }
-    if(!fullRows.length){ streak = 0; return; }   // placement without a clear breaks the streak
+    if(!fullRows.length){ streak = 0; prevClearBase = 0; return; }   // no clear breaks the streak
 
     const cleared = fullRows.length;
 
@@ -752,18 +753,24 @@
     flash = 1;                    // full-board white overlay
     SFX.flashClear();             // bright white-blink sound
 
-    // combo: clearing 2/3/4 lines at once multiplies the score ×2 / ×3 / ×4
-    // streak: clearing on back-to-back placements multiplies score ×2 / ×4 / ×8 ...
+    // multi-line combo: 2/3/4 lines at once → ×2 / ×4 / ×8
     streak += 1;
     const basePerLine = 100 * level;
-    const comboMult = cleared >= 2 ? cleared : 1;
-    const streakMult = streak >= 2 ? Math.pow(2, streak - 1) : 1;   // 2x, 4x, 8x, ...
-    const pts = basePerLine * cleared * comboMult * streakMult;
-    score += pts;
+    const comboMult = cleared >= 2 ? Math.pow(2, cleared - 1) : 1;   // 2x, 4x, 8x
+    const thisBase = basePerLine * cleared * comboMult;
+    // streak: back-to-back clears award (prev clear score + this clear score) × 4 / 8 / 16 ...
+    let awarded;
+    if(streak >= 2){
+      awarded = (prevClearBase + thisBase) * Math.pow(2, streak);    // 2연속 ×4, 3연속 ×8, 4연속 ×16
+    } else {
+      awarded = thisBase;
+    }
+    prevClearBase = thisBase;
+    score += awarded;
     lines += cleared;
 
     if(cleared >= 2) showComboBanner(cleared);   // "2 COMBO" / "3 COMBO" / "4 COMBO"
-    if(streak >= 2) showStreakBanner(streak);    // "2연속" / "3연속" / "N연속" (×2/×4/×8)
+    if(streak >= 2) showStreakBanner(streak);    // "2연속" / "3연속" / "N연속"
 
     // BATTLE: send that many garbage lines to the opponent
     if(battle && conn && conn.open && cleared > 0){
@@ -952,7 +959,7 @@
 
   function startGame(){
     grid = newGrid();
-    score = 0; level = 1; lines = 0; levelBaseScore = 0; streak = 0;
+    score = 0; level = 1; lines = 0; levelBaseScore = 0; streak = 0; prevClearBase = 0;
     gameOver = false; paused = false; running = true;
     dropInterval = baseInterval(1); acc = 0; lastTime = 0; levelTimer = 0;
     particles = []; flash = 0; shake = 0; flashRows = []; flashRowTimer = 0;
