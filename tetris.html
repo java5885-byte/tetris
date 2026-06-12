@@ -257,9 +257,10 @@
     opacity: 0;
   }
   .combo-banner span {
-    font-size: 38px;
+    font-size: 28px;
     font-weight: 800;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
+    white-space: nowrap;
     color: #7fe3ff;
     text-shadow: 0 0 16px rgba(127,227,255,.95), 0 0 34px rgba(60,180,255,.6), 0 2px 4px rgba(0,0,0,.6);
   }
@@ -473,8 +474,8 @@
     void levelBannerEl.offsetWidth;    // reflow to restart the animation
     levelBannerEl.classList.add('show');
   }
-  function showComboBanner(n){
-    comboBannerEl.querySelector('span').textContent = n + ' COMBO';
+  function showComboBanner(n, bonus){
+    comboBannerEl.querySelector('span').textContent = n + ' COMBO +' + bonus.toLocaleString();
     comboBannerEl.classList.remove('show');
     void comboBannerEl.offsetWidth;
     comboBannerEl.classList.add('show');
@@ -762,16 +763,14 @@
     // streak bonus: +10000 per consecutive clear (2연속 +10000, 3연속 +20000, 4연속 +30000 ...)
     const streakBonus = streak >= 2 ? (streak - 1) * 10000 : 0;
 
-    // line-clear flat bonus (many lines at once): 3줄 +10000, 4줄 +20000
-    let lineBonus = 0;
-    if(cleared === 3) lineBonus += 10000;
-    if(cleared >= 4) lineBonus += 20000;
+    // combo bonus (many lines at once): 2콤보 +10000, 3콤보 +20000, 4콤보 +40000
+    const comboBonus = cleared >= 2 ? 10000 * Math.pow(2, cleared - 2) : 0;
 
-    score += thisBase + streakBonus + lineBonus;
+    score += thisBase + streakBonus + comboBonus;
     lines += cleared;
 
-    if(cleared >= 2) showComboBanner(cleared);            // "2 COMBO" / "3 COMBO" / "4 COMBO"
-    if(streak >= 2) showStreakBanner(streak, streakBonus); // "N연속 +X"
+    if(cleared >= 2) showComboBanner(cleared, comboBonus);  // "N COMBO +X"
+    if(streak >= 2) showStreakBanner(streak, streakBonus);  // "N연속 +X"
 
     // BATTLE: send that many garbage lines to the opponent
     if(battle && conn && conn.open && cleared > 0){
