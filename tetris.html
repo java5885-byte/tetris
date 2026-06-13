@@ -16,7 +16,7 @@
   .hidden { display: none !important; }
   html, body {
     height: 100%;
-    background: radial-gradient(circle at 50% 0%, #1c1f3d, var(--bg));
+    background: radial-gradient(circle at 50% -10%, #2a6fc4 0%, #143f7d 38%, #0a234a 70%, #061634 100%);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     -webkit-user-select: none;
@@ -183,13 +183,14 @@
     gap: 7px;
   }
   .dpad button { width: 100%; height: 100%; }
-  .dpad .up    { grid-column: 2; grid-row: 1; }
-  .dpad .left  { grid-column: 1; grid-row: 2; }
-  .dpad .down  { grid-column: 2; grid-row: 2; }
-  .dpad .right { grid-column: 3; grid-row: 2; }
-  /* square yellow hard-drop, right next to the right-move key */
+  /* row1: ◀ 회전 ▶ ▼(soft) ; row2: 하드드롭 under the center rotate */
+  .dpad .left   { grid-column: 1; grid-row: 1; }
+  .dpad .rotate { grid-column: 2; grid-row: 1; }
+  .dpad .right  { grid-column: 3; grid-row: 1; }
+  .dpad .soft   { grid-column: 4; grid-row: 1; }
+  /* square yellow hard-drop, directly below the center rotate key */
   .dpad .harddrop {
-    grid-column: 4;
+    grid-column: 2;
     grid-row: 2;
     background: linear-gradient(to bottom, #ffe27a, #f4b400);
     border: 1px solid #d99a00;
@@ -429,10 +430,10 @@
     <!-- BOTTOM: control pad (keypad with hard-drop beside right) -->
     <div class="controls" id="touch">
       <div class="dpad">
-        <button class="up" data-act="rotate">▲</button>
         <button class="left" data-act="left">◀</button>
-        <button class="down" data-act="down">▼</button>
+        <button class="rotate" data-act="rotate">⟳</button>
         <button class="right" data-act="right">▶</button>
+        <button class="soft" data-act="down">▼</button>
         <button class="harddrop" data-act="drop">⤓</button>
       </div>
     </div>
